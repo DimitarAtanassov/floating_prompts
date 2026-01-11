@@ -1,6 +1,6 @@
 # floating-prompts
 
-Database layer for ModeloKit services. Provides PostgreSQL models and migrations using SQLAlchemy 2.0.
+Database layer for Prompt Management/Versioning services. Provides PostgreSQL models and migrations using SQLAlchemy 2.0.
 
 ## Features
 
