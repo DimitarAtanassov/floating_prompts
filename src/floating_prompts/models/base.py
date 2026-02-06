@@ -1,9 +1,11 @@
+"""
+SQLAlchemy base model with common columns.
+"""
+
 from datetime import datetime
 from typing import Any
-from uuid import uuid4
 
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Integer, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -11,15 +13,16 @@ class Base(DeclarativeBase):
     """
     Base class for all SQLAlchemy models.
 
-    Pattern: Template Method (via inheritance)
-    Why: Provides common columns and behaviors for all entities.
+    Provides:
+    - Auto-incrementing integer primary key
+    - created_at / updated_at timestamps (auto-managed)
+    - to_dict() for easy serialization
     """
 
-    # Common columns for all tables
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False),
+    id: Mapped[int] = mapped_column(
+        Integer,
         primary_key=True,
-        default=lambda: str(uuid4()),
+        autoincrement=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -36,5 +39,6 @@ class Base(DeclarativeBase):
     def to_dict(self) -> dict[str, Any]:
         """Convert model to dictionary."""
         return {
-            column.name: getattr(self, column.name) for column in self.__table__.columns
+            column.name: getattr(self, column.name)
+            for column in self.__table__.columns
         }
