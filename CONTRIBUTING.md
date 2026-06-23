@@ -22,8 +22,8 @@ uv run --directory apps/service alembic upgrade head # apply migrations
 A [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) with two members:
 
 ```
-apps/service/      floating-prompts-service  (import: floating_prompts)      — the deployable app
-packages/sdk/      floating-prompts-sdk      (import: floating_prompts_sdk)  — SDK + API contract
+apps/service/      floating-prompts-service  (import: floating_prompts)      the deployable app
+packages/sdk/      floating-prompts-sdk      (import: floating_prompts_sdk)  SDK + API contract
 ```
 
 The dependency DAG is `service → sdk` (never the reverse). The SDK owns the API
@@ -65,14 +65,14 @@ uv run alembic revision --autogenerate -m "describe change"
 uv run alembic upgrade head
 ```
 
-Review the generated migration before committing — autogenerate is a starting
+Review the generated migration before committing. Autogenerate is a starting
 point, not a guarantee.
 
 ## Tests
 
-- `packages/sdk/tests` — SDK unit tests (schemas, client via `httpx.MockTransport`).
-- `apps/service/tests/unit` — pure, fast, no I/O (rendering, security).
-- `apps/service/tests/integration` — service + DB via a real Postgres container.
-- `apps/service/tests/e2e` — full HTTP flows through the app.
+- `packages/sdk/tests`: SDK unit tests (schemas, client via `httpx.MockTransport`).
+- `apps/service/tests/unit`: pure, fast, no I/O (rendering, security).
+- `apps/service/tests/integration`: service + DB via a real Postgres container.
+- `apps/service/tests/e2e`: full HTTP flows through the app.
 
 Run a subset by marker: `uv run pytest -m unit`.

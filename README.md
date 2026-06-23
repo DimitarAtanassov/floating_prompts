@@ -10,6 +10,9 @@ gate access with scoped API keys.
 - **API-key auth** with `read` / `write` / `admin` scopes
 - **Observability**: structured logs, `/healthz` · `/readyz` · `/metrics`, and an audit trail
 
+> New here? Read the [docs](docs/README.md): a full deep dive and onboarding
+> guide to the codebase (architecture, database schema, and API reference).
+
 ---
 
 ## Concepts
@@ -19,7 +22,7 @@ gate access with scoped API keys.
 | **Project** | A namespace that owns prompts and API keys (`acme`). |
 | **Prompt** | A named prompt within a project (`summarizer`). Identity only. |
 | **Version** | An immutable revision of a prompt's content. Auto-incrementing. |
-| **Tag** | A movable alias (`production`) pointing at a version — pin this, not a number. |
+| **Tag** | A movable alias (`production`) pointing at a version. Pin this, not a number. |
 | **API key** | A scoped credential. Shown once; only a hash is stored. |
 
 Resolution precedence when reading a prompt: explicit **version** → **tag** → **latest**.
@@ -94,7 +97,7 @@ RFC 9457 `application/problem+json`.
 | `PUT /projects/{slug}/prompts/{name}/tags/{tag}` | write | Create / move a tag |
 | `POST /projects/{slug}/prompts/{name}/render` | read | Render with variables |
 | `POST /api-keys` | admin | Issue a key (secret shown once) |
-| `GET /healthz` · `/readyz` · `/metrics` | — | Probes & Prometheus metrics |
+| `GET /healthz` · `/readyz` · `/metrics` | none | Probes & Prometheus metrics |
 
 Interactive docs: **`/docs`** (Swagger) and **`/redoc`**.
 
@@ -131,8 +134,8 @@ Settings come from environment variables (prefix `FP_`, nested with `__`) or
 A [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) with two members:
 
 ```
-apps/service/        floating-prompts-service — the FastAPI app (import: floating_prompts) + migrations
-packages/sdk/        floating-prompts-sdk     — the SDK + API contract (import: floating_prompts_sdk)
+apps/service/        floating-prompts-service: the FastAPI app (import: floating_prompts) + migrations
+packages/sdk/        floating-prompts-sdk:     the SDK + API contract (import: floating_prompts_sdk)
 ```
 
 The service depends on the SDK for the API schemas (one source of truth); the
