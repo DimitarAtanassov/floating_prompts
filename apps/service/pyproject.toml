@@ -1,0 +1,46 @@
+[project]
+name = "floating-prompts-service"
+version = "0.1.0"
+description = "The Floating Prompts FastAPI service: versioned prompts, tags, safe templating, and API-key access."
+readme = "README.md"
+authors = [
+    { name = "DimitarAtanassov", email = "dimitar.atanassovse@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    # API contract + client (workspace member)
+    "floating-prompts-sdk",
+    # Web / API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.18",
+    # Persistence
+    "sqlalchemy[asyncio]>=2.0.40",
+    "asyncpg>=0.30.0",
+    "alembic>=1.15.0",
+    "greenlet>=3.1.0",
+    # Config / serialization / templating
+    "pydantic>=2.11.0",
+    "pydantic-settings>=2.8.0",
+    "orjson>=3.10.0",
+    "jinja2>=3.1.4",
+    # Observability
+    "structlog>=24.4.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    # CLI
+    "typer>=0.15.0",
+]
+
+[project.scripts]
+floating-prompts = "floating_prompts.cli.main:app"
+
+[build-system]
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
+
+# Distribution is "floating-prompts-service" but the import package is "floating_prompts".
+[tool.uv.build-backend]
+module-name = "floating_prompts"
+
+[tool.uv.sources]
+floating-prompts-sdk = { workspace = true }

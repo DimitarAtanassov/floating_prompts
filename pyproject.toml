@@ -1,79 +1,78 @@
-[project]
-name = "floating-prompts"
-version = "0.1.0"
-description = "Database layer for ModeloKit - PostgreSQL with SQLAlchemy"
-readme = "README.md"
-authors = [
-    { name = "DimitarAtanassov", email = "dimitar789558@gmail.com" }
-]
-requires-python = ">=3.13"
-dependencies = [
-    "sqlalchemy>=2.0.40",
-    "psycopg[binary]>=3.2.0",
-    "alembic>=1.15.0",
-    "python-dotenv>=1.2.1",
-    "pydantic>=2.11.0",
-    "pydantic-settings>=2.8.0",
-]
+# Virtual workspace root — coordinates the members and centralizes tooling.
+# (No [project] table: this root is not itself a package.)
 
-[project.scripts]
-floating-prompts = "floating_prompts.cli:main"
-
-[build-system]
-requires = ["uv_build>=0.9.16,<0.10.0"]
-build-backend = "uv_build"
+[tool.uv.workspace]
+members = ["apps/*", "packages/*"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.0.0",
+    "anyio>=4.6.0",
+    "testcontainers>=4.9.0",
+    "psycopg[binary]>=3.2.0",
 ]
 lint = [
     "mypy>=1.19.1",
     "ruff>=0.14.10",
+    "pre-commit>=4.0.0",
 ]
 
 [tool.uv]
 native-tls = true
+default-groups = ["dev", "lint"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["apps/service/tests", "packages/sdk/tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: fast tests with no external dependencies",
+    "integration: tests that exercise the database",
+    "e2e: end-to-end tests through the API",
+]
 
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
+mypy_path = ["apps/service/src", "packages/sdk/src"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*", "prometheus_fastapi_instrumentator.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 indent-width = 4
-target-version = "py312"
+target-version = "py313"
+src = ["apps/service/src", "packages/sdk/src", "apps/service/tests", "packages/sdk/tests"]
 
 [tool.ruff.lint]
 select = [
-    "F",      # pyflakes
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "C90",    # Mccabe complexity
-    "I",      # isort
-    "N",      # pep8-naming
-    "UP",     # pyupgrade
-    "ANN",    # flake8-annotations
-    "ASYNC",  # flake8-ASYNC
-    "S",      # flake8-bandit
-    "B",      # flake8-bugbear
-    "A",      # flake8-builtins
-    "C4",     # flake8-comprehensions
-    "PT",     # flake8-pyteststyle
-    "PL",     # pylint
-    "PERF",   # perflint
+    "F", "E", "W", "C90", "I", "N", "UP", "ANN", "ASYNC", "S", "B", "A",
+    "C4", "PT", "PL", "PERF", "RUF",
 ]
 ignore = [
-    "PLR2004",  # Magic values in comparisons
-    "W291",     # Trailing whitespace
-    "W292",     # No newline at end of file
-    "W293",     # Blank line contains whitespace
-    "E501",     # Line too long
+    "PLR2004",  # magic values in comparisons
+    "W291",     # trailing whitespace
+    "W292",     # no newline at end of file
+    "W293",     # blank line contains whitespace
+    "E501",     # line too long (formatter handles wrapping)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["S101", "S105", "S106", "ANN", "PLR2004", "INP001", "PLC0415"]
+"**/alembic/**/*.py" = ["ANN", "INP001"]
+# CLI: many options per command, lazy imports keep startup fast.
+"apps/service/src/floating_prompts/cli/*" = ["PLC0415", "PLR0913", "ANN401"]
+# SDK client: httpx passthrough kwargs are intentionally dynamic.
+"packages/sdk/src/floating_prompts_sdk/client.py" = ["ANN401"]
+
 [tool.coverage.run]
-source = ["src"]
+source = ["apps/service/src", "packages/sdk/src"]
 branch = true
+omit = ["*/cli/*", "*/__main__.py"]
 
 [tool.coverage.report]
 precision = 2

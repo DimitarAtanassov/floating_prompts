@@ -1,205 +1,150 @@
-# 🗄️ Floating Prompts
+# 🎈 Floating Prompts
 
-Simple versioned prompt storage for LLM applications.
+An async **prompt management service**: store prompts, version them immutably,
+pin moving environment tags (`production`, `staging`), render them safely, and
+gate access with scoped API keys.
 
-**Philosophy:** One table, minimal columns, maximum utility.
-
-## What It Does
-
-Stores prompts with versioning so you can:
-- Track prompt changes over time
-- Roll back to previous versions
-- A/B test different prompt versions
-
-```
-┌─────────────────────────────────────────┐
-│              prompts                    │
-├─────────────────────────────────────────┤
-│ id            UUID (auto)               │
-│ name          "summarizer"              │
-│ version       1, 2, 3...                │
-│ system_prompt "You are helpful..."      │
-│ user_prompt   "Summarize: {content}"    │
-│ created_at    (auto)                    │
-│ updated_at    (auto)                    │
-└─────────────────────────────────────────┘
-```
+- **FastAPI** service (async, Postgres) with OpenAPI docs at `/docs`
+- **Typed Python SDK** + **CLI** for easy onboarding
+- **Safe templating** (sandboxed Jinja2 with a declared-variable contract)
+- **API-key auth** with `read` / `write` / `admin` scopes
+- **Observability**: structured logs, `/healthz` · `/readyz` · `/metrics`, and an audit trail
 
 ---
 
-## Quick Start
+## Concepts
+
+| Concept | What it is |
+|---|---|
+| **Project** | A namespace that owns prompts and API keys (`acme`). |
+| **Prompt** | A named prompt within a project (`summarizer`). Identity only. |
+| **Version** | An immutable revision of a prompt's content. Auto-incrementing. |
+| **Tag** | A movable alias (`production`) pointing at a version — pin this, not a number. |
+| **API key** | A scoped credential. Shown once; only a hash is stored. |
+
+Resolution precedence when reading a prompt: explicit **version** → **tag** → **latest**.
+
+---
+
+## Quick start (60 seconds)
 
 ```bash
-# 1. Install
-uv sync
-
-# 2. Configure (create .env)
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_DB=floating_prompts
-
-# 3. Start PostgreSQL
-docker-compose up -d
-
-# 4. Run migrations
-uv run alembic upgrade head
-
-# 5. Try it
-uv run python main.py
+uv sync                                      # 1. install the workspace
+cp .env.example .env                         # 2. configure
+docker compose up -d postgres                # 3. start Postgres
+uv run --directory apps/service alembic upgrade head   # 4. create the schema
+uv run floating-prompts serve                # 5. run the API  (http://localhost:8000/docs)
 ```
+
+In another terminal, mint an admin key and drive the service from the CLI:
+
+```bash
+export FP_API_KEY=$(uv run floating-prompts bootstrap | tail -1)
+
+uv run floating-prompts project create acme "ACME Corp"
+uv run floating-prompts prompt add-version acme summarizer \
+    "Summarize:\n\n{{ content }}" --system-prompt "You are concise."
+uv run floating-prompts tag set acme summarizer production 1
+uv run floating-prompts prompt render acme summarizer \
+    --var content="Hello, world!" --tag production
+```
+
+> The whole stack (Postgres + migrated API) also runs with
+> `docker compose --profile full up --build`.
 
 ---
 
-## Usage
-
-### Basic Operations
+## Using the SDK
 
 ```python
-from floating_prompts import Prompt, PromptRepository, get_session, init_db
+from floating_prompts_sdk import PromptsClient  # AsyncPromptsClient is also available
 
-# Initialize database (creates tables if needed)
-init_db()
-
-with get_session() as session:
-    repo = PromptRepository(session)
-    
-    # Create a prompt (auto-increments version)
-    prompt = repo.create(
-        name="summarizer",
-        system_prompt="You are a helpful assistant.",
-        user_prompt="Summarize this: {content}",
+with PromptsClient("http://localhost:8000", api_key="fp_...") as client:
+    client.create_project("acme", "ACME Corp")
+    client.create_version(
+        "acme", "summarizer",
+        user_prompt="Summarize:\n\n{{ content }}",
+        system_prompt="You are concise.",
     )
-    
-    # Get latest version of a prompt
-    prompt = repo.get_by_name("summarizer")
-    
-    # Get specific version
-    prompt = repo.get_by_name("summarizer", version=1)
-    
-    # List all versions of a prompt
-    versions = repo.list_versions("summarizer")
-    
-    # List latest version of each prompt
-    latest_prompts = repo.list_latest()
+    client.set_tag("acme", "summarizer", "production", version=1)
+
+    result = client.render("acme", "summarizer",
+                           {"content": "Hello!"}, tag="production")
+    print(result.user_prompt)  # -> "Summarize:\n\nHello!"
 ```
 
-### Rendering Prompts
-
-```python
-# Get the prompt
-prompt = repo.get_by_name("summarizer")
-
-# Render with variables
-system, user = prompt.render(content="Hello world!")
-# system = "You are a helpful assistant."
-# user = "Summarize this: Hello world!"
-
-# Use with your LLM
-response = llm.ask(user, system_prompt=system)
-```
-
-### Version Management
-
-```python
-# Create v1
-repo.create(name="analyzer", user_prompt="Analyze: {text}")
-
-# Create v2 (auto-increments)
-repo.create(name="analyzer", user_prompt="Deep analysis: {text}")
-
-# Create specific version
-repo.create(name="analyzer", user_prompt="Quick analysis: {text}", version=10)
-
-# List all versions
-for p in repo.list_versions("analyzer"):
-    print(f"v{p.version}: {p.user_prompt[:30]}...")
-```
+See [`examples/quickstart.py`](examples/quickstart.py) for a runnable version.
 
 ---
 
-## Project Structure
+## API overview
 
-```
-floating_prompts/
-├── src/floating_prompts/
-│   ├── __init__.py      # Public API exports
-│   ├── config.py        # Database settings from .env
-│   ├── database.py      # Connection & session management
-│   ├── repository.py    # CRUD operations
-│   └── models/
-│       ├── base.py      # SQLAlchemy base with UUID + timestamps
-│       └── prompt.py    # The Prompt model
-│
-├── alembic/
-│   └── versions/        # Database migrations
-│
-├── main.py              # Example usage
-└── docker-compose.yml   # PostgreSQL container
-```
+All endpoints are under `/api/v1` and require an `X-API-Key` header. Errors use
+RFC 9457 `application/problem+json`.
+
+| Method & path | Scope | Description |
+|---|---|---|
+| `POST /projects` | write | Create a project |
+| `GET /projects` · `GET /projects/{slug}` | read | List / get projects |
+| `DELETE /projects/{slug}` | admin | Delete a project |
+| `POST /projects/{slug}/prompts` | write | Create a prompt |
+| `POST /projects/{slug}/prompts/{name}/versions` | write | Add a version |
+| `GET /projects/{slug}/prompts/{name}/versions` | read | List versions |
+| `GET /projects/{slug}/prompts/{name}/resolve?version=&tag=` | read | Resolve to a version |
+| `PUT /projects/{slug}/prompts/{name}/tags/{tag}` | write | Create / move a tag |
+| `POST /projects/{slug}/prompts/{name}/render` | read | Render with variables |
+| `POST /api-keys` | admin | Issue a key (secret shown once) |
+| `GET /healthz` · `/readyz` · `/metrics` | — | Probes & Prometheus metrics |
+
+Interactive docs: **`/docs`** (Swagger) and **`/redoc`**.
+
+---
+
+## Templating
+
+Templates use Jinja2 (`{{ variable }}`) rendered in a **sandbox** with strict
+undefined handling. Each version declares its variables (inferred from the
+template if you don't pass them). Rendering validates the supplied values:
+
+- missing a required variable → `422 missing_variables`
+- supplying an undeclared variable → `422 unknown_variables`
+- attribute-escape / injection attempts → `422 template_error`
 
 ---
 
-## API Reference
+## Configuration
 
-### Prompt Model
+Settings come from environment variables (prefix `FP_`, nested with `__`) or
+`.env`. See [`.env.example`](.env.example). Highlights:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Auto-generated primary key |
-| `name` | str | Prompt identifier (e.g., "summarizer") |
-| `version` | int | Version number (default: 1) |
-| `system_prompt` | str \| None | Optional system context |
-| `user_prompt` | str | User prompt with `{placeholders}` |
-| `created_at` | datetime | Auto-set on creation |
-| `updated_at` | datetime | Auto-updated on changes |
-
-### PromptRepository Methods
-
-| Method | Description |
-|--------|-------------|
-| `create(name, user_prompt, system_prompt?, version?)` | Create a prompt |
-| `get_by_name(name, version?)` | Get prompt (latest if no version) |
-| `get_by_id(id)` | Get prompt by UUID |
-| `list_all()` | List all prompts (all versions) |
-| `list_names()` | List unique prompt names |
-| `list_versions(name)` | List all versions of a prompt |
-| `list_latest()` | List latest version of each prompt |
-| `update(prompt, ...)` | Update prompt fields |
-| `delete(prompt)` | Delete a prompt |
-| `exists(name, version?)` | Check if prompt exists |
+| Variable | Default | Meaning |
+|---|---|---|
+| `FP_DB__HOST` / `__PORT` / `__USER` / `__PASSWORD` / `__NAME` | localhost / 5432 / postgres / postgres / floating_prompts | Postgres connection |
+| `FP_SERVER__PORT` | 8000 | HTTP port |
+| `FP_LOG__JSON_LOGS` | true | JSON logs (set `false` for pretty console) |
+| `FP_ENVIRONMENT` | local | `local` / `test` / `staging` / `production` |
 
 ---
+
+## Repository layout
+
+A [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) with two members:
+
+```
+apps/service/        floating-prompts-service — the FastAPI app (import: floating_prompts) + migrations
+packages/sdk/        floating-prompts-sdk     — the SDK + API contract (import: floating_prompts_sdk)
+```
+
+The service depends on the SDK for the API schemas (one source of truth); the
+SDK is standalone (`pydantic` + `httpx` only). One `uv.lock`, one `uv sync`.
 
 ## Development
 
-```bash
-# Run linting
-uv run ruff check src/ --fix
-uv run ruff format src/
-
-# Type checking
-uv run mypy src/
-
-# Run tests
-uv run pytest
-```
-
-### Creating Migrations
+See [CONTRIBUTING.md](CONTRIBUTING.md). Run the quality gates from the repo root:
 
 ```bash
-# After changing models
-uv run alembic revision --autogenerate -m "description"
-
-# Apply migrations
-uv run alembic upgrade head
-
-# Rollback one step
-uv run alembic downgrade -1
+uv run ruff check apps packages && uv run mypy apps/service/src packages/sdk/src && uv run pytest --cov
 ```
-
----
 
 ## License
 

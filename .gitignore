@@ -35,6 +35,9 @@ htmlcov/
 alembic/__pycache__/
 alembic/versions/__pycache__/
 
+# Claude Code agent config & skills (local only)
+.claude/
+
 
 
 
