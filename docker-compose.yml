@@ -1,17 +1,41 @@
 services:
   postgres:
     image: postgres:16
-    container_name: modelo_kit_postgres
-    env_file:
-      - .env
+    container_name: floating_prompts_postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${FP_DB__USER:-postgres}
+      POSTGRES_PASSWORD: ${FP_DB__PASSWORD:-postgres}
+      POSTGRES_DB: ${FP_DB__NAME:-floating_prompts}
     ports:
-      - "5432:5432"
+      - "${FP_DB__PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FP_DB__USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: floating_prompts_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FP_DB__HOST: postgres
+      FP_DB__USER: ${FP_DB__USER:-postgres}
+      FP_DB__PASSWORD: ${FP_DB__PASSWORD:-postgres}
+      FP_DB__NAME: ${FP_DB__NAME:-floating_prompts}
+      FP_ENVIRONMENT: ${FP_ENVIRONMENT:-local}
+    ports:
+      - "${FP_SERVER__PORT:-8000}:8000"
+    # Apply migrations, then serve.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn floating_prompts.api.app:create_app --factory
+             --host 0.0.0.0 --port 8000"
+    profiles: ["full"]
 
 volumes:
   postgres_data:

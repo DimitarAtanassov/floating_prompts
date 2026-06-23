@@ -1,0 +1,17 @@
+[project]
+name = "floating-prompts-sdk"
+version = "0.1.0"
+description = "Typed Python SDK and API contract (schemas) for the Floating Prompts service."
+readme = "README.md"
+authors = [
+    { name = "DimitarAtanassov", email = "dimitar.atanassovse@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.11.0",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
