@@ -10,9 +10,7 @@ export function ConnectionBadge() {
     ? { dot: "bg-muted-foreground/50", label: "Checking..." }
     : !data?.ok
       ? { dot: "bg-destructive", label: "Unreachable" }
-      : !data.keySet
-        ? { dot: "bg-amber-500", label: "No API key" }
-        : { dot: "bg-emerald-500", label: "Connected" }
+      : { dot: "bg-emerald-500", label: "Connected" }
 
   return (
     <Link

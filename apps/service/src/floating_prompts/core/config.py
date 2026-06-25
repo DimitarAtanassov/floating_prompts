@@ -23,7 +23,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = [
     "AppSettings",
-    "AuthSettings",
     "DatabaseSettings",
     "Environment",
     "LoggingSettings",
@@ -88,15 +87,6 @@ class ServerSettings(BaseModel):
     cors_origins: list[str] = Field(default_factory=list)
 
 
-class AuthSettings(BaseModel):
-    """API-key authentication configuration."""
-
-    api_key_header: str = "X-API-Key"
-    # Number of characters of a generated key used as the public, indexable
-    # prefix (the remainder is the secret that is hashed and never stored).
-    key_prefix_length: int = 8
-
-
 class LoggingSettings(BaseModel):
     """Structured logging configuration."""
 
@@ -120,7 +110,6 @@ class AppSettings(BaseSettings):
 
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
-    auth: AuthSettings = Field(default_factory=AuthSettings)
     log: LoggingSettings = Field(default_factory=LoggingSettings)
 
     @property

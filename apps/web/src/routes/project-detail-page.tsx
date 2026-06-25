@@ -1,5 +1,5 @@
 import { motion } from "motion/react"
-import { ChevronLeft, FileText, KeyRound, Trash2 } from "lucide-react"
+import { ChevronLeft, FileText, Trash2 } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -32,17 +32,7 @@ export function ProjectDetailPage() {
         <PageHeader
           title={project.data?.name ?? slug}
           description={project.data?.description ?? `Prompts in ${slug}`}
-          actions={
-            <div className="flex gap-2">
-              <Button variant="outline" asChild className="gap-2">
-                <Link to={`/keys?project=${slug}`}>
-                  <KeyRound className="size-4" />
-                  API keys
-                </Link>
-              </Button>
-              <CreatePromptDialog slug={slug} />
-            </div>
-          }
+          actions={<CreatePromptDialog slug={slug} />}
         />
       </div>
 

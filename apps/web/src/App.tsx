@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "./components/app-shell"
-import { ApiKeysPage } from "./routes/api-keys-page"
 import { PlaygroundPage } from "./routes/playground-page"
 import { ProjectDetailPage } from "./routes/project-detail-page"
 import { ProjectsPage } from "./routes/projects-page"
@@ -19,7 +18,6 @@ export function App() {
           element={<PromptDetailPage />}
         />
         <Route path="/playground" element={<PlaygroundPage />} />
-        <Route path="/keys" element={<ApiKeysPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/projects" replace />} />
       </Route>

@@ -63,12 +63,7 @@ class PromptService(BaseService):
         return project.id
 
     async def create_prompt(
-        self,
-        *,
-        project_slug: str,
-        name: str,
-        description: str | None,
-        actor: str,
+        self, *, project_slug: str, name: str, description: str | None
     ) -> Prompt:
         """Create a prompt identity within a project."""
         project_id = await self._project_id(project_slug)
@@ -77,16 +72,9 @@ class PromptService(BaseService):
                 f"Prompt '{name}' already exists in project '{project_slug}'.",
                 extra={"project": project_slug, "name": name},
             )
-        prompt = await self._prompts.add(
+        return await self._prompts.add(
             Prompt(project_id=project_id, name=name, description=description)
         )
-        await self._record(
-            actor=actor,
-            action="prompt.create",
-            resource_type="prompt",
-            resource_id=f"{project_slug}/{name}",
-        )
-        return prompt
 
     async def get_prompt(self, *, project_slug: str, name: str) -> Prompt:
         """Return a prompt or raise ``NotFoundError``."""
@@ -110,16 +98,10 @@ class PromptService(BaseService):
         total = await self._prompts.count_for_project(project_id)
         return items, total
 
-    async def delete_prompt(self, *, project_slug: str, name: str, actor: str) -> None:
+    async def delete_prompt(self, *, project_slug: str, name: str) -> None:
         """Delete a prompt and all of its versions and tags."""
         prompt = await self.get_prompt(project_slug=project_slug, name=name)
         await self._prompts.delete(prompt)
-        await self._record(
-            actor=actor,
-            action="prompt.delete",
-            resource_type="prompt",
-            resource_id=f"{project_slug}/{name}",
-        )
 
     # -- Versions ------------------------------------------------------------
 
@@ -131,7 +113,6 @@ class PromptService(BaseService):
         user_prompt: str,
         system_prompt: str | None = None,
         variables: list[dict[str, Any]] | None = None,
-        actor: str,
         create_prompt_if_missing: bool = True,
     ) -> PromptVersion:
         """Append a new immutable version, auto-incrementing the version number.
@@ -143,7 +124,6 @@ class PromptService(BaseService):
             project_slug=project_slug,
             name=name,
             create_if_missing=create_prompt_if_missing,
-            actor=actor,
         )
 
         if variables is None:
@@ -154,7 +134,7 @@ class PromptService(BaseService):
             ]
 
         next_version = await self._prompts.next_version_number(prompt.id)
-        version = await self._prompts.add_version(
+        return await self._prompts.add_version(
             PromptVersion(
                 prompt_id=prompt.id,
                 version=next_version,
@@ -162,20 +142,11 @@ class PromptService(BaseService):
                 user_prompt=user_prompt,
                 variables=variables,
                 checksum=_checksum(system_prompt, user_prompt, variables),
-                created_by=actor,
             )
         )
-        await self._record(
-            actor=actor,
-            action="version.create",
-            resource_type="prompt_version",
-            resource_id=f"{project_slug}/{name}@{next_version}",
-            details={"version": next_version},
-        )
-        return version
 
     async def _get_or_create_prompt(
-        self, *, project_slug: str, name: str, create_if_missing: bool, actor: str
+        self, *, project_slug: str, name: str, create_if_missing: bool
     ) -> Prompt:
         project_id = await self._project_id(project_slug)
         prompt = await self._prompts.get_by_name(project_id, name)
@@ -187,7 +158,7 @@ class PromptService(BaseService):
                 extra={"project": project_slug, "name": name},
             )
         return await self.create_prompt(
-            project_slug=project_slug, name=name, description=None, actor=actor
+            project_slug=project_slug, name=name, description=None
         )
 
     async def list_versions(
@@ -246,13 +217,7 @@ class PromptService(BaseService):
     # -- Tags ----------------------------------------------------------------
 
     async def set_tag(
-        self,
-        *,
-        project_slug: str,
-        name: str,
-        tag_name: str,
-        version: int,
-        actor: str,
+        self, *, project_slug: str, name: str, tag_name: str, version: int
     ) -> Tag:
         """Create or move a tag to point at a specific version."""
         prompt = await self.get_prompt(project_slug=project_slug, name=name)
@@ -272,13 +237,6 @@ class PromptService(BaseService):
             tag.version_id = target.id
             await self.session.flush()
 
-        await self._record(
-            actor=actor,
-            action="tag.set",
-            resource_type="tag",
-            resource_id=f"{project_slug}/{name}:{tag_name}",
-            details={"version": version},
-        )
         return tag
 
     async def list_tags(self, *, project_slug: str, name: str) -> Sequence[Tag]:
@@ -286,9 +244,7 @@ class PromptService(BaseService):
         prompt = await self.get_prompt(project_slug=project_slug, name=name)
         return await self._prompts.list_tags(prompt.id)
 
-    async def delete_tag(
-        self, *, project_slug: str, name: str, tag_name: str, actor: str
-    ) -> None:
+    async def delete_tag(self, *, project_slug: str, name: str, tag_name: str) -> None:
         """Remove a tag (does not affect the version it pointed at)."""
         prompt = await self.get_prompt(project_slug=project_slug, name=name)
         tag = await self._prompts.get_tag(prompt.id, tag_name)
@@ -298,12 +254,6 @@ class PromptService(BaseService):
                 extra={"project": project_slug, "name": name, "tag": tag_name},
             )
         await self.session.delete(tag)
-        await self._record(
-            actor=actor,
-            action="tag.delete",
-            resource_type="tag",
-            resource_id=f"{project_slug}/{name}:{tag_name}",
-        )
 
     # -- Rendering -----------------------------------------------------------
 

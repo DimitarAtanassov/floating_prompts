@@ -1,8 +1,8 @@
 """Async and sync HTTP clients for the Floating Prompts API.
 
 The two clients expose the same surface; they differ only in ``await``. Shared
-concerns — URL building, auth header, and error mapping — live in module-level
-helpers so the two implementations stay in lock-step (DRY).
+concerns — URL building and error mapping — live in module-level helpers so the
+two implementations stay in lock-step (DRY).
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from typing import Any, Self
 
 import httpx
 
-from floating_prompts_sdk.schemas.api_key import ApiKeyCreated
 from floating_prompts_sdk.schemas.common import Page
 from floating_prompts_sdk.schemas.project import ProjectRead
 from floating_prompts_sdk.schemas.prompt import (
@@ -41,10 +40,6 @@ class PromptsClientError(Exception):
         self.status = status
         self.code = code
         self.extra = extra or {}
-
-
-def _auth_headers(api_key: str | None) -> dict[str, str]:
-    return {"X-API-Key": api_key} if api_key else {}
 
 
 def _check(response: httpx.Response) -> httpx.Response:
@@ -93,13 +88,11 @@ class AsyncPromptsClient:
         self,
         base_url: str,
         *,
-        api_key: str | None = None,
         timeout: float = 10.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._client = client or httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
-            headers=_auth_headers(api_key),
             timeout=timeout,
         )
 
@@ -242,22 +235,6 @@ class AsyncPromptsClient:
         )
         return RenderResult.model_validate(resp.json())
 
-    # -- API keys ------------------------------------------------------------
-
-    async def issue_api_key(
-        self,
-        name: str,
-        scopes: list[str],
-        *,
-        project_slug: str | None = None,
-    ) -> ApiKeyCreated:
-        resp = await self._request(
-            "POST",
-            "/api/v1/api-keys",
-            json={"name": name, "scopes": scopes, "project_slug": project_slug},
-        )
-        return ApiKeyCreated.model_validate(resp.json())
-
 
 class PromptsClient:
     """Synchronous client for the Floating Prompts API."""
@@ -266,13 +243,11 @@ class PromptsClient:
         self,
         base_url: str,
         *,
-        api_key: str | None = None,
         timeout: float = 10.0,
         client: httpx.Client | None = None,
     ) -> None:
         self._client = client or httpx.Client(
             base_url=base_url.rstrip("/"),
-            headers=_auth_headers(api_key),
             timeout=timeout,
         )
 
@@ -398,13 +373,3 @@ class PromptsClient:
             json=_render_payload(variables, version, tag),
         )
         return RenderResult.model_validate(resp.json())
-
-    def issue_api_key(
-        self, name: str, scopes: list[str], *, project_slug: str | None = None
-    ) -> ApiKeyCreated:
-        resp = self._request(
-            "POST",
-            "/api/v1/api-keys",
-            json={"name": name, "scopes": scopes, "project_slug": project_slug},
-        )
-        return ApiKeyCreated.model_validate(resp.json())

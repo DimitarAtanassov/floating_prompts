@@ -13,12 +13,7 @@ pytestmark = pytest.mark.unit
 def _client(handler: httpx.MockTransport) -> PromptsClient:
     return PromptsClient(
         "http://test",
-        api_key="fp_test",
-        client=httpx.Client(
-            base_url="http://test",
-            headers={"X-API-Key": "fp_test"},
-            transport=handler,
-        ),
+        client=httpx.Client(base_url="http://test", transport=handler),
     )
 
 
@@ -26,7 +21,6 @@ def test_create_project_builds_request_and_parses_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
         assert request.url.path == "/api/v1/projects"
-        assert request.headers["X-API-Key"] == "fp_test"
         return httpx.Response(
             201,
             json={

@@ -1,11 +1,5 @@
 import { AnimatePresence, motion } from "motion/react"
-import {
-  FolderGit2,
-  KeyRound,
-  Settings,
-  Sparkles,
-  Wand2,
-} from "lucide-react"
+import { FolderGit2, Settings, Sparkles, Wand2 } from "lucide-react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { ConnectionBadge } from "@/components/connection-badge"
 import { pageMotion } from "@/lib/motion"
@@ -14,7 +8,6 @@ import { cn } from "@/lib/utils"
 const NAV = [
   { to: "/projects", label: "Projects", icon: FolderGit2 },
   { to: "/playground", label: "Playground", icon: Wand2 },
-  { to: "/keys", label: "API Keys", icon: KeyRound },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 

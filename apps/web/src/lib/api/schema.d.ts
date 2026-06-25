@@ -203,57 +203,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/api-keys": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Issue an API key (secret shown once) */
-        post: operations["issue_api_key_api_v1_api_keys_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{slug}/api-keys": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List a project's API keys */
-        get: operations["list_api_keys_api_v1_projects__slug__api_keys_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/api-keys/{key_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Revoke an API key */
-        delete: operations["revoke_api_key_api_v1_api_keys__key_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/metrics": {
         parameters: {
             query?: never;
@@ -278,91 +227,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * ApiKeyCreate
-         * @description Payload for issuing an API key.
-         */
-        ApiKeyCreate: {
-            /**
-             * Name
-             * @example ci-pipeline
-             */
-            name: string;
-            /**
-             * Scopes
-             * @example [
-             *       "read",
-             *       "write"
-             *     ]
-             */
-            scopes?: components["schemas"]["Scope"][];
-            /**
-             * Project Slug
-             * @description Scope the key to a project; omit for a global key.
-             */
-            project_slug?: string | null;
-            /** Expires At */
-            expires_at?: string | null;
-        };
-        /**
-         * ApiKeyCreated
-         * @description Response returned once at creation, including the one-time secret.
-         */
-        ApiKeyCreated: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
-            /** Prefix */
-            prefix: string;
-            /** Scopes */
-            scopes: string[];
-            /** Project Id */
-            project_id: number | null;
-            /** Last Used At */
-            last_used_at: string | null;
-            /** Expires At */
-            expires_at: string | null;
-            /** Revoked At */
-            revoked_at: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Key
-             * @description The full API key — shown only once.
-             */
-            key: string;
-        };
-        /**
-         * ApiKeyRead
-         * @description API key metadata (never includes the secret).
-         */
-        ApiKeyRead: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
-            /** Prefix */
-            prefix: string;
-            /** Scopes */
-            scopes: string[];
-            /** Project Id */
-            project_id: number | null;
-            /** Last Used At */
-            last_used_at: string | null;
-            /** Expires At */
-            expires_at: string | null;
-            /** Revoked At */
-            revoked_at: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -557,12 +421,6 @@ export interface components {
             /** User Prompt */
             user_prompt: string;
         };
-        /**
-         * Scope
-         * @description Permissions an API key may be granted.
-         * @enum {string}
-         */
-        Scope: "read" | "write" | "admin";
         /**
          * TagRead
          * @description A tag (alias) as returned by the API.
@@ -1160,101 +1018,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenderResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    issue_api_key_api_v1_api_keys_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApiKeyCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiKeyCreated"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_api_keys_api_v1_projects__slug__api_keys_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiKeyRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    revoke_api_key_api_v1_api_keys__key_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiKeyRead"];
                 };
             };
             /** @description Validation Error */

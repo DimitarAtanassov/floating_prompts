@@ -2,28 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-
-from floating_prompts.api.deps import AuthContext, PromptServiceDep, require_scope
-from floating_prompts.models.api_key import Scope
+from floating_prompts.api.deps import PromptServiceDep
 from floating_prompts_sdk.schemas.prompt import RenderRequest, RenderResult
 
 __all__ = ["router"]
 
 router = APIRouter(prefix="/projects/{slug}/prompts", tags=["rendering"])
 
-ReadAuth = Annotated[AuthContext, Depends(require_scope(Scope.READ))]
-
 
 @router.post("/{name}/render", summary="Render a prompt with variable values")
 async def render_prompt(
-    slug: str,
-    name: str,
-    payload: RenderRequest,
-    service: PromptServiceDep,
-    _: ReadAuth,
+    slug: str, name: str, payload: RenderRequest, service: PromptServiceDep
 ) -> RenderResult:
     version, rendered = await service.render(
         project_slug=slug,

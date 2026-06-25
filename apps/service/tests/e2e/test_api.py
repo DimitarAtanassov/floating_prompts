@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 pytestmark = pytest.mark.e2e
 
@@ -15,19 +15,10 @@ async def _create_project(client: AsyncClient, slug: str = "acme") -> None:
     assert resp.status_code == 201
 
 
-async def test_health_is_public(anon_client: AsyncClient) -> None:
-    resp = await anon_client.get("/healthz")
+async def test_health_is_public(client: AsyncClient) -> None:
+    resp = await client.get("/healthz")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
-
-
-async def test_unauthenticated_returns_problem_json(
-    anon_client: AsyncClient,
-) -> None:
-    resp = await anon_client.get("/api/v1/projects")
-    assert resp.status_code == 401
-    assert resp.headers["content-type"].startswith("application/problem+json")
-    assert resp.json()["code"] == "unauthenticated"
 
 
 async def test_full_prompt_lifecycle(client: AsyncClient) -> None:
@@ -77,30 +68,6 @@ async def test_duplicate_project_is_409(client: AsyncClient) -> None:
     resp = await client.post("/api/v1/projects", json={"slug": "acme", "name": "Dup"})
     assert resp.status_code == 409
     assert resp.json()["code"] == "conflict"
-
-
-async def test_insufficient_scope_is_forbidden(
-    client: AsyncClient, app: object
-) -> None:
-    # Admin issues a read-only key.
-    issued = await client.post(
-        "/api/v1/api-keys", json={"name": "reader", "scopes": ["read"]}
-    )
-    assert issued.status_code == 201
-    read_key = issued.json()["key"]
-
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
-    async with AsyncClient(
-        transport=transport, base_url="http://test", headers={"X-API-Key": read_key}
-    ) as reader:
-        # Reads are allowed.
-        assert (await reader.get("/api/v1/projects")).status_code == 200
-        # Writes are not.
-        resp = await reader.post(
-            "/api/v1/projects", json={"slug": "nope", "name": "Nope"}
-        )
-        assert resp.status_code == 403
-        assert resp.json()["code"] == "forbidden"
 
 
 async def test_invalid_slug_is_request_validation_error(

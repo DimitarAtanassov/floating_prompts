@@ -8,14 +8,9 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { getApiKey, getBaseUrl } from "@/lib/settings"
+import { getBaseUrl } from "@/lib/settings"
 import { api, unwrap } from "./client"
-import type {
-  ApiKeyCreate,
-  ApiKeyCreated,
-  PromptVersionCreate,
-  RenderResult,
-} from "./models"
+import type { PromptVersionCreate, RenderResult } from "./models"
 
 export const keys = {
   projects: ["projects"] as const,
@@ -24,12 +19,11 @@ export const keys = {
   prompt: (slug: string, name: string) => ["prompt", slug, name] as const,
   versions: (slug: string, name: string) => ["versions", slug, name] as const,
   tags: (slug: string, name: string) => ["tags", slug, name] as const,
-  apiKeys: (slug: string) => ["apiKeys", slug] as const,
 }
 
 // -- Connection -------------------------------------------------------------
 
-export type Health = { ok: boolean; database?: string; keySet: boolean }
+export type Health = { ok: boolean; database?: string }
 
 export function useHealth() {
   return useQuery<Health>({
@@ -43,7 +37,6 @@ export function useHealth() {
       return {
         ok: res.ok && body.status === "ok",
         database: body.database,
-        keySet: getApiKey().length > 0,
       }
     },
     refetchInterval: 15_000,
@@ -232,42 +225,5 @@ export function useRender(slug: string, name: string) {
           { params: { path: { slug, name } }, body },
         ),
       ),
-  })
-}
-
-// -- API keys ---------------------------------------------------------------
-
-export function useApiKeys(slug: string) {
-  return useQuery({
-    queryKey: keys.apiKeys(slug),
-    queryFn: async () =>
-      unwrap(
-        await api().GET("/api/v1/projects/{slug}/api-keys", {
-          params: { path: { slug } },
-        }),
-      ),
-    enabled: slug.length > 0,
-  })
-}
-
-export function useIssueApiKey(slug: string) {
-  const qc = useQueryClient()
-  return useMutation<ApiKeyCreated, Error, ApiKeyCreate>({
-    mutationFn: async (body) =>
-      unwrap(await api().POST("/api/v1/api-keys", { body })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.apiKeys(slug) }),
-  })
-}
-
-export function useRevokeApiKey(slug: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (keyId: number) =>
-      unwrap(
-        await api().DELETE("/api/v1/api-keys/{key_id}", {
-          params: { path: { key_id: keyId } },
-        }),
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.apiKeys(slug) }),
   })
 }

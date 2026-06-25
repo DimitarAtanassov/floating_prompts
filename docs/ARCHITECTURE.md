@@ -15,7 +15,7 @@ Related docs: [Database schema](DATABASE.md), [API reference](API.md), [docs ind
 Floating Prompts is a **prompt management service**. Teams store the prompts they
 send to LLMs, version them, label them per environment, and fetch them at runtime.
 
-It solves four problems:
+It solves three problems:
 
 1. **Versioning.** Every change to a prompt creates a new immutable version. You
    can always see history and roll back.
@@ -24,11 +24,9 @@ It solves four problems:
    code deploy.
 3. **Safe templating.** Prompts have `{{ variables }}`. The service validates the
    values and renders them in a sandbox, so a bad input cannot break out or leak.
-4. **Access control.** Every call needs an API key with a scope (`read`, `write`,
-   or `admin`).
 
-It also records who changed what (audit log) and exposes health and metrics
-endpoints for operations.
+It exposes health and metrics endpoints for operations. The API is currently
+open (no authentication); restrict access at the network or gateway layer.
 
 ---
 
@@ -42,8 +40,8 @@ flowchart LR
     db[("PostgreSQL")]
     obs["Logs (JSON)<br/>/metrics (Prometheus)"]
 
-    apps -- "HTTP + X-API-Key" --> svc
-    cli -- "HTTP + X-API-Key" --> svc
+    apps -- "HTTP" --> svc
+    cli -- "HTTP" --> svc
     svc -- "async SQL (asyncpg)" --> db
     svc -- emits --> obs
 ```
@@ -103,20 +101,19 @@ apps/service/src/floating_prompts/
   repositories/  data access
   models/        SQLAlchemy ORM
   db/            engine, session, base
-  core/          config, logging, security, errors
+  core/          config, logging, errors
   cli/           Typer CLI
 apps/service/alembic/   database migrations
 
 packages/sdk/src/floating_prompts_sdk/
   client.py      sync and async HTTP clients
   schemas/       Pydantic request/response models (the API contract)
-  scopes.py      Scope enum
 ```
 
 **The dependency rule between packages:** `service depends on sdk`. The service
-reuses the SDK's Pydantic schemas and the `Scope` enum, so the API contract has
-one source of truth. The SDK never depends on the service. The SDK installs with
-only `pydantic` and `httpx`, so external consumers pull in no server code.
+reuses the SDK's Pydantic schemas, so the API contract has one source of truth.
+The SDK never depends on the service. The SDK installs with only `pydantic` and
+`httpx`, so external consumers pull in no server code.
 
 ---
 
@@ -128,7 +125,7 @@ layer below it, never the layer above.
 ```mermaid
 flowchart TD
     req["HTTP request"] --> api["API layer (api/)<br/>routers, dependency injection, error mapping"]
-    api --> svc["Service layer (services/)<br/>business rules, transactions, audit"]
+    api --> svc["Service layer (services/)<br/>business rules, transactions"]
     svc --> repo["Repository layer (repositories/)<br/>queries and persistence only"]
     repo --> model["Model layer (models/)<br/>SQLAlchemy ORM tables"]
     cross["core/ and db/<br/>config, logging, security, sessions"]
@@ -146,7 +143,7 @@ Why this matters:
 | Layer | Folder | Responsibility | Must NOT |
 |---|---|---|---|
 | API | `api/` | Parse and validate HTTP, call a service, map errors to JSON | Contain business rules or SQL |
-| Service | `services/` | Enforce domain rules, own the transaction, write audit logs | Know about HTTP |
+| Service | `services/` | Enforce domain rules, own the transaction | Know about HTTP |
 | Repository | `repositories/` | Build and run queries | Contain business rules |
 | Model | `models/` | Define tables and relationships | Know about HTTP or services |
 | Core/DB | `core/`, `db/` | Config, logging, security, sessions | Depend on the layers above |
@@ -160,13 +157,10 @@ Identity, content, and labels are separated so each can change independently.
 ```mermaid
 flowchart TD
     project["Project (acme)"]
-    apikey["ApiKey<br/>(scoped, or global)"]
     prompt["Prompt (summarizer)<br/>identity only"]
     version["PromptVersion (v1, v2, ...)<br/>immutable content"]
     tag["Tag (production to v1)<br/>movable alias"]
-    audit["AuditLog<br/>append-only history"]
 
-    project -->|owns| apikey
     project -->|owns| prompt
     prompt -->|has versions| version
     prompt -->|has tags| tag
@@ -175,12 +169,10 @@ flowchart TD
 
 | Entity | Purpose | Key fields |
 |---|---|---|
-| `Project` | Namespace that owns prompts and keys | `slug` (unique), `name` |
+| `Project` | Namespace that owns prompts | `slug` (unique), `name` |
 | `Prompt` | A named prompt, identity only | `(project_id, name)` unique |
 | `PromptVersion` | One immutable revision of content | `version`, `system_prompt`, `user_prompt`, `variables` (JSONB), `checksum` |
 | `Tag` | Movable alias to a version | `(prompt_id, name)` unique, `version_id` |
-| `ApiKey` | A scoped credential | `prefix`, `token_hash`, `scopes`, `expires_at`, `revoked_at` |
-| `AuditLog` | History of mutations | `actor`, `action`, `resource_type`, `resource_id`, `details` |
 
 **Resolution order** when fetching a prompt: explicit **version**, then **tag**,
 then **latest** (highest version number). This single rule lives in
@@ -199,16 +191,12 @@ sequenceDiagram
     participant C as Client
     participant M as Middleware
     participant R as Router (api/v1)
-    participant A as Auth dependency
     participant S as PromptService
     participant DB as Repositories + DB
 
-    C->>M: HTTP request + X-API-Key
+    C->>M: HTTP request
     M->>M: assign request_id, start timer
     M->>R: route to render endpoint
-    R->>A: authenticate + require "read" scope
-    A->>DB: look up key by prefix, verify hash
-    A-->>R: AuthContext
     R->>R: validate body (RenderRequest schema)
     R->>S: render(project, name, values, tag)
     S->>DB: resolve version (version / tag / latest)

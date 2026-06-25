@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from floating_prompts_sdk import Page, ProjectRead, Scope, VariableSpec
+from floating_prompts_sdk import Page, ProjectRead, VariableSpec
 from floating_prompts_sdk.schemas.common import PageMeta
 
 pytestmark = pytest.mark.unit
@@ -18,10 +18,6 @@ def test_variable_spec_rejects_invalid_identifier() -> None:
 
 def test_variable_spec_defaults_required_true() -> None:
     assert VariableSpec(name="content").required is True
-
-
-def test_scope_values() -> None:
-    assert {s.value for s in Scope} == {"read", "write", "admin"}
 
 
 def test_generic_page_validates_items() -> None:

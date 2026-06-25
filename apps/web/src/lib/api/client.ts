@@ -5,8 +5,8 @@
  * URL changes. `ApiError` normalizes the service's RFC 9457 problem responses.
  */
 
-import createClient, { type Middleware } from "openapi-fetch"
-import { getApiKey, getBaseUrl, subscribe } from "@/lib/settings"
+import createClient from "openapi-fetch"
+import { getBaseUrl, subscribe } from "@/lib/settings"
 import type { components, paths } from "./schema"
 
 export type Schemas = components["schemas"]
@@ -30,18 +30,8 @@ export class ApiError extends Error {
   }
 }
 
-const authMiddleware: Middleware = {
-  async onRequest({ request }) {
-    const key = getApiKey()
-    if (key) request.headers.set("X-API-Key", key)
-    return request
-  },
-}
-
 function build() {
-  const client = createClient<paths>({ baseUrl: getBaseUrl() })
-  client.use(authMiddleware)
-  return client
+  return createClient<paths>({ baseUrl: getBaseUrl() })
 }
 
 let client = build()

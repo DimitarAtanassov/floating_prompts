@@ -1,4 +1,4 @@
-"""Project model — the top-level namespace for prompts and API keys."""
+"""Project model — the top-level namespace for prompts."""
 
 from __future__ import annotations
 
@@ -10,14 +10,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from floating_prompts.db.base import Base, IdMixin, TimestampMixin
 
 if TYPE_CHECKING:
-    from floating_prompts.models.api_key import ApiKey
     from floating_prompts.models.prompt import Prompt
 
 __all__ = ["Project"]
 
 
 class Project(IdMixin, TimestampMixin, Base):
-    """A workspace that owns prompts and API keys.
+    """A workspace that owns prompts.
 
     The ``slug`` is the stable, URL-safe identifier used in API paths
     (e.g. ``/api/v1/projects/{slug}/prompts``).
@@ -30,11 +29,6 @@ class Project(IdMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, default=None)
 
     prompts: Mapped[list[Prompt]] = relationship(
-        back_populates="project",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-    api_keys: Mapped[list[ApiKey]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
         passive_deletes=True,

@@ -5,11 +5,6 @@ models: request bodies validate input, response models shape output, and
 neither leaks SQLAlchemy internals to clients.
 """
 
-from floating_prompts_sdk.schemas.api_key import (
-    ApiKeyCreate,
-    ApiKeyCreated,
-    ApiKeyRead,
-)
 from floating_prompts_sdk.schemas.common import Page, PageMeta, ProblemDetail
 from floating_prompts_sdk.schemas.project import ProjectCreate, ProjectRead
 from floating_prompts_sdk.schemas.prompt import (
@@ -25,9 +20,6 @@ from floating_prompts_sdk.schemas.prompt import (
 )
 
 __all__ = [
-    "ApiKeyCreate",
-    "ApiKeyCreated",
-    "ApiKeyRead",
     "Page",
     "PageMeta",
     "ProblemDetail",
