@@ -123,7 +123,7 @@ class PromptService(BaseService):
 
     # -- Versions ------------------------------------------------------------
 
-    async def create_version(  # noqa: PLR0913 - cohesive creation parameters
+    async def create_version(
         self,
         *,
         project_slug: str,

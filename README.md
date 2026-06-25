@@ -135,11 +135,34 @@ A [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) with t
 
 ```
 apps/service/        floating-prompts-service: the FastAPI app (import: floating_prompts) + migrations
+apps/web/            web UI (Vite + React + Tailwind), talks to the API over HTTP
 packages/sdk/        floating-prompts-sdk:     the SDK + API contract (import: floating_prompts_sdk)
 ```
 
 The service depends on the SDK for the API schemas (one source of truth); the
 SDK is standalone (`pydantic` + `httpx` only). One `uv.lock`, one `uv sync`.
+The web UI is a separate JavaScript app, excluded from the uv workspace.
+
+## Web UI
+
+A clean React dashboard to manage projects, prompts, versions, tags, rendering,
+and API keys.
+
+```bash
+# 1. Run the API with CORS enabled for the dev server
+#    (.env: FP_SERVER__CORS_ORIGINS=["http://localhost:5173"])
+uv run floating-prompts serve
+
+# 2. Start the UI
+cd apps/web
+npm install
+npm run dev                 # http://localhost:5173
+```
+
+Open the UI, go to **Settings**, paste your API base URL and a key
+(`uv run floating-prompts bootstrap`), and you are ready. The UI is typed against
+the backend's OpenAPI; regenerate those types after API changes with
+`npm run gen:api`.
 
 ## Development
 

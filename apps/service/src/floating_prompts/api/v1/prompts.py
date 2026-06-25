@@ -142,7 +142,7 @@ async def resolve_version(
 
 
 @router.put("/{name}/tags/{tag_name}", summary="Create or move a tag")
-async def set_tag(  # noqa: PLR0913 - path params + body + deps
+async def set_tag(
     slug: str,
     name: str,
     tag_name: str,

@@ -3,6 +3,8 @@
 
 [tool.uv.workspace]
 members = ["apps/*", "packages/*"]
+# apps/web is a JavaScript app (Vite/React), not a uv package.
+exclude = ["apps/web"]
 
 [dependency-groups]
 dev = [
@@ -50,8 +52,25 @@ src = ["apps/service/src", "packages/sdk/src", "apps/service/tests", "packages/s
 
 [tool.ruff.lint]
 select = [
-    "F", "E", "W", "C90", "I", "N", "UP", "ANN", "ASYNC", "S", "B", "A",
-    "C4", "PT", "PL", "PERF", "RUF",
+    "F",      # pyflakes
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "C90",    # mccabe complexity
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "YTT",    # flake8-2020
+    "ANN",    # flake8-annotations
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit
+    "BLE",    # flake8-blind-except
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "PT",     # flake8-pytest-style
+    "PL",     # pylint
+    "PERF",   # perflint
+    "RUF",    # ruff-specific
 ]
 ignore = [
     "PLR2004",  # magic values in comparisons
@@ -60,6 +79,12 @@ ignore = [
     "W293",     # blank line contains whitespace
     "E501",     # line too long (formatter handles wrapping)
 ]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = ["S101", "S105", "S106", "ANN", "PLR2004", "INP001", "PLC0415"]

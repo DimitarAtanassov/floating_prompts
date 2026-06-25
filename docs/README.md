@@ -10,6 +10,8 @@ Start here to understand and run Floating Prompts.
 
 Also useful:
 
+- [Web UI](../apps/web/): a React dashboard for projects, prompts, versions, tags,
+  rendering, and API keys. See the "Web UI" section of the root README to run it.
 - [Root README](../README.md): one-paragraph overview and a 60-second quickstart.
 - [CONTRIBUTING.md](../CONTRIBUTING.md): setup, workspace layout, and quality gates.
 - [examples/quickstart.py](../examples/quickstart.py): a runnable SDK script.
