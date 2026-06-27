@@ -226,30 +226,24 @@ One async engine and session factory per process. `session_scope()` is a
 transactional context manager. In the API, a request scoped session dependency
 commits on success and rolls back on error, so services never commit themselves.
 
-### 8.3 Authentication and scopes (`core/security.py`, `api/deps.py`)
-A key looks like `fp_<random>`. We store only a `prefix` (for lookup) and a
-SHA-256 `token_hash`. On each call we find the key by prefix and compare hashes in
-constant time. Scopes are ordered `read`, `write`, `admin`, and `admin` implies
-all. The first key is created out of band with the `bootstrap` CLI command.
-
-### 8.4 Safe templating (`services/rendering.py`)
+### 8.3 Safe templating (`services/rendering.py`)
 Templates use Jinja2 in a **sandbox** with strict undefined handling. Each version
 declares its variables (inferred from the template if not given). Rendering fails
 clearly on a missing required variable, an unknown variable, or an escape attempt.
 Each case maps to HTTP 422.
 
-### 8.5 Errors (`core/exceptions.py`, `api/errors.py`)
+### 8.4 Errors (`core/exceptions.py`, `api/errors.py`)
 Services raise transport agnostic domain errors (`NotFoundError`, `ConflictError`,
-`ValidationError`, `AuthenticationError`, `AuthorizationError`). One set of
-handlers turns them into RFC 9457 `application/problem+json` responses with a
-stable, machine readable `code`. Internal errors never leak details.
+`ValidationError`). One set of handlers turns them into RFC 9457
+`application/problem+json` responses with a stable, machine readable `code`.
+Internal errors never leak details.
 
-### 8.6 Observability (`core/logging.py`, `api/middleware.py`, `api/app.py`)
+### 8.5 Observability (`core/logging.py`, `api/middleware.py`, `api/app.py`)
 Logs are structured JSON via structlog, each line carrying the `request_id`.
 `/healthz` is liveness, `/readyz` checks the database, `/metrics` exposes
-Prometheus data. Every mutation writes an `AuditLog` row from the service layer.
+Prometheus data.
 
-### 8.7 Migrations (`apps/service/alembic/`)
+### 8.6 Migrations (`apps/service/alembic/`)
 Alembic autogenerates migrations from the ORM models. Run them from
 `apps/service`. The schema is the source of truth in production. `create_all` is
 used only to set up the test database quickly.
@@ -281,7 +275,6 @@ The SDK is the supported way to call the service from Python. It ships:
 
 - `PromptsClient` (sync) and `AsyncPromptsClient` (async), with the same methods.
 - The Pydantic `schemas`, the request and response contract shared with the server.
-- The `Scope` enum.
 
 Because the server imports these same schemas, the client and server cannot drift.
 Errors from the API are raised as `PromptsClientError` carrying `.status`,
@@ -296,9 +289,9 @@ mock the database. Three levels:
 
 | Level | Location | What it covers |
 |---|---|---|
-| Unit | `apps/service/tests/unit`, `packages/sdk/tests` | Pure logic: rendering, security, schema validation, client request building |
+| Unit | `apps/service/tests/unit`, `packages/sdk/tests` | Pure logic: rendering, schema validation, client request building |
 | Integration | `apps/service/tests/integration` | Services against the database |
-| End to end | `apps/service/tests/e2e` | Full HTTP flows through the app, including auth and error mapping |
+| End to end | `apps/service/tests/e2e` | Full HTTP flows through the app, including error mapping |
 
 Coverage gate: **80%**. Quality gates (lint, format, types, tests) run in CI on
 every PR and locally via pre-commit.
@@ -344,7 +337,6 @@ every PR and locally via pre-commit.
 - Business rules live in services, not routers or repositories.
 - Shared request and response shapes live in the SDK schemas.
 - Raise a domain error. Never return a raw HTTP error from a service.
-- Every mutation writes an audit record.
 
 ---
 
@@ -363,7 +355,6 @@ every PR and locally via pre-commit.
 | Async stack end to end | Handle many concurrent requests efficiently. |
 | SDK owns the schemas | One source of truth, client and server cannot drift. |
 | Immutable versions plus movable tags | Safe rollback and promotion without redeploys. |
-| API keys hashed, shown once | A database leak does not expose usable credentials. |
 | Real Postgres in tests | Catch SQL and JSONB issues that mocks would hide. |
 | uv workspace monorepo | Service and SDK evolve together with one lockfile. |
 
@@ -371,11 +362,10 @@ every PR and locally via pre-commit.
 
 ## 15. Glossary
 
-- **Project.** A workspace or namespace that owns prompts and keys.
+- **Project.** A workspace or namespace that owns prompts.
 - **Prompt.** A named prompt, identity only, no content.
 - **Version.** One immutable revision of a prompt's content.
 - **Tag.** A movable label (for example `production`) pointing at a version.
-- **Scope.** A permission on an API key: `read`, `write`, or `admin`.
 - **Render.** Fill a version's template with variable values.
 - **Problem+JSON.** The standard error response format (RFC 9457).
 - **Workspace member.** One package in the monorepo (`service` or `sdk`).
@@ -389,8 +379,7 @@ every PR and locally via pre-commit.
 3. `docker compose up -d postgres`.
 4. `cd apps/service && uv run alembic upgrade head`.
 5. `uv run floating-prompts serve`.
-6. In a second shell: `export FP_API_KEY=$(uv run floating-prompts bootstrap | tail -1)`,
-   then create a project, add a version, set a tag, and render it (see the root
+6. Create a project, add a version, set a tag, and render it (see the root
    README quickstart or [API.md](API.md)).
 7. Run `uv run pytest` and read one test in each level.
 

@@ -4,10 +4,9 @@ Settings are loaded from environment variables (and an optional ``.env`` file)
 using ``pydantic-settings``. Configuration is grouped into nested sections so
 that related knobs live together and map to a clear env-var namespace:
 
-    FP_DB__HOST=db.internal       -> settings.db.host
-    FP_SERVER__PORT=9000          -> settings.server.port
-    FP_AUTH__API_KEY_HEADER=X-Key -> settings.auth.api_key_header
-    FP_LOG__LEVEL=DEBUG           -> settings.log.level
+    FP_DB__HOST=db.internal   -> settings.db.host
+    FP_SERVER__PORT=9000      -> settings.server.port
+    FP_LOG__LEVEL=DEBUG       -> settings.log.level
 
 The single entry point is :func:`get_settings`, which returns a cached instance.
 """

@@ -12,8 +12,6 @@ from __future__ import annotations
 from typing import Any
 
 __all__ = [
-    "AuthenticationError",
-    "AuthorizationError",
     "ConflictError",
     "DomainError",
     "NotFoundError",
@@ -71,17 +69,3 @@ class ValidationError(DomainError):
 
     status_code = 422
     code = "validation_error"
-
-
-class AuthenticationError(DomainError):
-    """The caller could not be authenticated (missing/invalid API key)."""
-
-    status_code = 401
-    code = "unauthenticated"
-
-
-class AuthorizationError(DomainError):
-    """The caller is authenticated but lacks the required scope."""
-
-    status_code = 403
-    code = "forbidden"

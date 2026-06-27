@@ -1,8 +1,8 @@
 /**
  * Type-safe API client built on openapi-fetch, typed by the generated schema.
  *
- * The client injects the API key on every request and is rebuilt when the base
- * URL changes. `ApiError` normalizes the service's RFC 9457 problem responses.
+ * The client is rebuilt when the base URL changes. `ApiError` normalizes the
+ * service's RFC 9457 problem responses.
  */
 
 import createClient from "openapi-fetch"

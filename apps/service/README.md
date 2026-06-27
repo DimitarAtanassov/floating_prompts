@@ -1,8 +1,8 @@
 # floating-prompts-service
 
 The deployable [Floating Prompts](../../README.md) FastAPI application: versioned
-prompt management with environment tags, sandboxed templating, scoped API-key
-auth, and observability. Depends on
+prompt management with environment tags, sandboxed templating, and
+observability. Depends on
 [`floating-prompts-sdk`](../../packages/sdk) for the API contract.
 
 Run from the repo root:

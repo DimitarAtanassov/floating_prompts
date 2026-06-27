@@ -20,8 +20,8 @@ help: ## List available targets
 prepare: ## Sync the locked uv workspace
 	uv sync
 
-.PHONY: web-install
-web-install: ## Install web dependencies (npm)
+.PHONY: frontend-install
+frontend-install: ## Install web dependencies (npm)
 	cd $(WEB) && npm install
 
 # ---------------------------------------------------------------------------
@@ -65,12 +65,12 @@ test-e2e: prepare ## Run end-to-end API tests
 # ---------------------------------------------------------------------------
 # Quality gates (Web)
 # ---------------------------------------------------------------------------
-.PHONY: web-lint
-web-lint: ## Lint and type-check the web app
+.PHONY: frontend-lint
+frontend-lint: ## Lint and type-check the web app
 	cd $(WEB) && npm run lint && npm run typecheck
 
-.PHONY: web-build
-web-build: ## Production build of the web app
+.PHONY: frontend-build
+frontend-build: ## Production build of the web app
 	cd $(WEB) && npm run build
 
 .PHONY: gen-api
@@ -103,14 +103,14 @@ revision: ## Autogenerate a migration: make revision m="message"
 serve: ## Run the API (CORS enabled for the web dev server)
 	FP_SERVER__CORS_ORIGINS='["http://localhost:5173"]' uv run floating-prompts serve
 
-.PHONY: web
-web: ## Run the web UI dev server (http://localhost:5173)
-	cd $(WEB) && npm run dev
+.PHONY: frontend
+frontend: ## Run the web UI dev server (installs deps if needed)
+	cd $(WEB) && { [ -d node_modules ] || npm install; } && npm run dev
 
 .PHONY: dev
-dev: db ## Start Postgres, migrate, then run API + web together
+dev: db ## Start Postgres, migrate, then run API + frontend together
 	$(MAKE) migrate
-	$(MAKE) -j2 serve web
+	$(MAKE) -j2 serve frontend
 
 # ---------------------------------------------------------------------------
 # Docker Compose stack
@@ -135,4 +135,4 @@ logs: ## Tail logs from running services
 # Aggregate
 # ---------------------------------------------------------------------------
 .PHONY: check
-check: lint web-lint web-build test ## Run every gate (Python + web + tests)
+check: lint frontend-lint frontend-build test ## Run every gate (Python + frontend + tests)
