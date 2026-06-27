@@ -21,30 +21,16 @@ class ProjectService(BaseService):
         super().__init__(session)
         self._projects = ProjectRepository(session)
 
-    async def create(
-        self,
-        *,
-        slug: str,
-        name: str,
-        description: str | None,
-        actor: str,
-    ) -> Project:
+    async def create(self, *, slug: str, name: str, description: str | None) -> Project:
         """Create a project. Raises ``ConflictError`` if the slug is taken."""
         if await self._projects.get_by_slug(slug) is not None:
             raise ConflictError(
                 f"Project '{slug}' already exists.",
                 extra={"slug": slug},
             )
-        project = await self._projects.add(
+        return await self._projects.add(
             Project(slug=slug, name=name, description=description)
         )
-        await self._record(
-            actor=actor,
-            action="project.create",
-            resource_type="project",
-            resource_id=slug,
-        )
-        return project
 
     async def get(self, slug: str) -> Project:
         """Return a project or raise ``NotFoundError``."""
@@ -61,13 +47,7 @@ class ProjectService(BaseService):
         total = await self._projects.count()
         return items, total
 
-    async def delete(self, *, slug: str, actor: str) -> None:
+    async def delete(self, *, slug: str) -> None:
         """Delete a project and everything it owns."""
         project = await self.get(slug)
         await self._projects.delete(project)
-        await self._record(
-            actor=actor,
-            action="project.delete",
-            resource_type="project",
-            resource_id=slug,
-        )

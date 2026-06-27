@@ -15,7 +15,7 @@ Related docs: [Database schema](DATABASE.md), [API reference](API.md), [docs ind
 Floating Prompts is a **prompt management service**. Teams store the prompts they
 send to LLMs, version them, label them per environment, and fetch them at runtime.
 
-It solves four problems:
+It solves three problems:
 
 1. **Versioning.** Every change to a prompt creates a new immutable version. You
    can always see history and roll back.
@@ -24,11 +24,9 @@ It solves four problems:
    code deploy.
 3. **Safe templating.** Prompts have `{{ variables }}`. The service validates the
    values and renders them in a sandbox, so a bad input cannot break out or leak.
-4. **Access control.** Every call needs an API key with a scope (`read`, `write`,
-   or `admin`).
 
-It also records who changed what (audit log) and exposes health and metrics
-endpoints for operations.
+It exposes health and metrics endpoints for operations. The API is currently
+open (no authentication); restrict access at the network or gateway layer.
 
 ---
 
@@ -42,8 +40,8 @@ flowchart LR
     db[("PostgreSQL")]
     obs["Logs (JSON)<br/>/metrics (Prometheus)"]
 
-    apps -- "HTTP + X-API-Key" --> svc
-    cli -- "HTTP + X-API-Key" --> svc
+    apps -- "HTTP" --> svc
+    cli -- "HTTP" --> svc
     svc -- "async SQL (asyncpg)" --> db
     svc -- emits --> obs
 ```
@@ -103,20 +101,19 @@ apps/service/src/floating_prompts/
   repositories/  data access
   models/        SQLAlchemy ORM
   db/            engine, session, base
-  core/          config, logging, security, errors
+  core/          config, logging, errors
   cli/           Typer CLI
 apps/service/alembic/   database migrations
 
 packages/sdk/src/floating_prompts_sdk/
   client.py      sync and async HTTP clients
   schemas/       Pydantic request/response models (the API contract)
-  scopes.py      Scope enum
 ```
 
 **The dependency rule between packages:** `service depends on sdk`. The service
-reuses the SDK's Pydantic schemas and the `Scope` enum, so the API contract has
-one source of truth. The SDK never depends on the service. The SDK installs with
-only `pydantic` and `httpx`, so external consumers pull in no server code.
+reuses the SDK's Pydantic schemas, so the API contract has one source of truth.
+The SDK never depends on the service. The SDK installs with only `pydantic` and
+`httpx`, so external consumers pull in no server code.
 
 ---
 
@@ -128,7 +125,7 @@ layer below it, never the layer above.
 ```mermaid
 flowchart TD
     req["HTTP request"] --> api["API layer (api/)<br/>routers, dependency injection, error mapping"]
-    api --> svc["Service layer (services/)<br/>business rules, transactions, audit"]
+    api --> svc["Service layer (services/)<br/>business rules, transactions"]
     svc --> repo["Repository layer (repositories/)<br/>queries and persistence only"]
     repo --> model["Model layer (models/)<br/>SQLAlchemy ORM tables"]
     cross["core/ and db/<br/>config, logging, security, sessions"]
@@ -146,7 +143,7 @@ Why this matters:
 | Layer | Folder | Responsibility | Must NOT |
 |---|---|---|---|
 | API | `api/` | Parse and validate HTTP, call a service, map errors to JSON | Contain business rules or SQL |
-| Service | `services/` | Enforce domain rules, own the transaction, write audit logs | Know about HTTP |
+| Service | `services/` | Enforce domain rules, own the transaction | Know about HTTP |
 | Repository | `repositories/` | Build and run queries | Contain business rules |
 | Model | `models/` | Define tables and relationships | Know about HTTP or services |
 | Core/DB | `core/`, `db/` | Config, logging, security, sessions | Depend on the layers above |
@@ -160,13 +157,10 @@ Identity, content, and labels are separated so each can change independently.
 ```mermaid
 flowchart TD
     project["Project (acme)"]
-    apikey["ApiKey<br/>(scoped, or global)"]
     prompt["Prompt (summarizer)<br/>identity only"]
     version["PromptVersion (v1, v2, ...)<br/>immutable content"]
     tag["Tag (production to v1)<br/>movable alias"]
-    audit["AuditLog<br/>append-only history"]
 
-    project -->|owns| apikey
     project -->|owns| prompt
     prompt -->|has versions| version
     prompt -->|has tags| tag
@@ -175,12 +169,10 @@ flowchart TD
 
 | Entity | Purpose | Key fields |
 |---|---|---|
-| `Project` | Namespace that owns prompts and keys | `slug` (unique), `name` |
+| `Project` | Namespace that owns prompts | `slug` (unique), `name` |
 | `Prompt` | A named prompt, identity only | `(project_id, name)` unique |
 | `PromptVersion` | One immutable revision of content | `version`, `system_prompt`, `user_prompt`, `variables` (JSONB), `checksum` |
 | `Tag` | Movable alias to a version | `(prompt_id, name)` unique, `version_id` |
-| `ApiKey` | A scoped credential | `prefix`, `token_hash`, `scopes`, `expires_at`, `revoked_at` |
-| `AuditLog` | History of mutations | `actor`, `action`, `resource_type`, `resource_id`, `details` |
 
 **Resolution order** when fetching a prompt: explicit **version**, then **tag**,
 then **latest** (highest version number). This single rule lives in
@@ -199,16 +191,12 @@ sequenceDiagram
     participant C as Client
     participant M as Middleware
     participant R as Router (api/v1)
-    participant A as Auth dependency
     participant S as PromptService
     participant DB as Repositories + DB
 
-    C->>M: HTTP request + X-API-Key
+    C->>M: HTTP request
     M->>M: assign request_id, start timer
     M->>R: route to render endpoint
-    R->>A: authenticate + require "read" scope
-    A->>DB: look up key by prefix, verify hash
-    A-->>R: AuthContext
     R->>R: validate body (RenderRequest schema)
     R->>S: render(project, name, values, tag)
     S->>DB: resolve version (version / tag / latest)
@@ -238,30 +226,24 @@ One async engine and session factory per process. `session_scope()` is a
 transactional context manager. In the API, a request scoped session dependency
 commits on success and rolls back on error, so services never commit themselves.
 
-### 8.3 Authentication and scopes (`core/security.py`, `api/deps.py`)
-A key looks like `fp_<random>`. We store only a `prefix` (for lookup) and a
-SHA-256 `token_hash`. On each call we find the key by prefix and compare hashes in
-constant time. Scopes are ordered `read`, `write`, `admin`, and `admin` implies
-all. The first key is created out of band with the `bootstrap` CLI command.
-
-### 8.4 Safe templating (`services/rendering.py`)
+### 8.3 Safe templating (`services/rendering.py`)
 Templates use Jinja2 in a **sandbox** with strict undefined handling. Each version
 declares its variables (inferred from the template if not given). Rendering fails
 clearly on a missing required variable, an unknown variable, or an escape attempt.
 Each case maps to HTTP 422.
 
-### 8.5 Errors (`core/exceptions.py`, `api/errors.py`)
+### 8.4 Errors (`core/exceptions.py`, `api/errors.py`)
 Services raise transport agnostic domain errors (`NotFoundError`, `ConflictError`,
-`ValidationError`, `AuthenticationError`, `AuthorizationError`). One set of
-handlers turns them into RFC 9457 `application/problem+json` responses with a
-stable, machine readable `code`. Internal errors never leak details.
+`ValidationError`). One set of handlers turns them into RFC 9457
+`application/problem+json` responses with a stable, machine readable `code`.
+Internal errors never leak details.
 
-### 8.6 Observability (`core/logging.py`, `api/middleware.py`, `api/app.py`)
+### 8.5 Observability (`core/logging.py`, `api/middleware.py`, `api/app.py`)
 Logs are structured JSON via structlog, each line carrying the `request_id`.
 `/healthz` is liveness, `/readyz` checks the database, `/metrics` exposes
-Prometheus data. Every mutation writes an `AuditLog` row from the service layer.
+Prometheus data.
 
-### 8.7 Migrations (`apps/service/alembic/`)
+### 8.6 Migrations (`apps/service/alembic/`)
 Alembic autogenerates migrations from the ORM models. Run them from
 `apps/service`. The schema is the source of truth in production. `create_all` is
 used only to set up the test database quickly.
@@ -293,7 +275,6 @@ The SDK is the supported way to call the service from Python. It ships:
 
 - `PromptsClient` (sync) and `AsyncPromptsClient` (async), with the same methods.
 - The Pydantic `schemas`, the request and response contract shared with the server.
-- The `Scope` enum.
 
 Because the server imports these same schemas, the client and server cannot drift.
 Errors from the API are raised as `PromptsClientError` carrying `.status`,
@@ -308,9 +289,9 @@ mock the database. Three levels:
 
 | Level | Location | What it covers |
 |---|---|---|
-| Unit | `apps/service/tests/unit`, `packages/sdk/tests` | Pure logic: rendering, security, schema validation, client request building |
+| Unit | `apps/service/tests/unit`, `packages/sdk/tests` | Pure logic: rendering, schema validation, client request building |
 | Integration | `apps/service/tests/integration` | Services against the database |
-| End to end | `apps/service/tests/e2e` | Full HTTP flows through the app, including auth and error mapping |
+| End to end | `apps/service/tests/e2e` | Full HTTP flows through the app, including error mapping |
 
 Coverage gate: **80%**. Quality gates (lint, format, types, tests) run in CI on
 every PR and locally via pre-commit.
@@ -356,7 +337,6 @@ every PR and locally via pre-commit.
 - Business rules live in services, not routers or repositories.
 - Shared request and response shapes live in the SDK schemas.
 - Raise a domain error. Never return a raw HTTP error from a service.
-- Every mutation writes an audit record.
 
 ---
 
@@ -375,7 +355,6 @@ every PR and locally via pre-commit.
 | Async stack end to end | Handle many concurrent requests efficiently. |
 | SDK owns the schemas | One source of truth, client and server cannot drift. |
 | Immutable versions plus movable tags | Safe rollback and promotion without redeploys. |
-| API keys hashed, shown once | A database leak does not expose usable credentials. |
 | Real Postgres in tests | Catch SQL and JSONB issues that mocks would hide. |
 | uv workspace monorepo | Service and SDK evolve together with one lockfile. |
 
@@ -383,11 +362,10 @@ every PR and locally via pre-commit.
 
 ## 15. Glossary
 
-- **Project.** A workspace or namespace that owns prompts and keys.
+- **Project.** A workspace or namespace that owns prompts.
 - **Prompt.** A named prompt, identity only, no content.
 - **Version.** One immutable revision of a prompt's content.
 - **Tag.** A movable label (for example `production`) pointing at a version.
-- **Scope.** A permission on an API key: `read`, `write`, or `admin`.
 - **Render.** Fill a version's template with variable values.
 - **Problem+JSON.** The standard error response format (RFC 9457).
 - **Workspace member.** One package in the monorepo (`service` or `sdk`).
@@ -401,8 +379,7 @@ every PR and locally via pre-commit.
 3. `docker compose up -d postgres`.
 4. `cd apps/service && uv run alembic upgrade head`.
 5. `uv run floating-prompts serve`.
-6. In a second shell: `export FP_API_KEY=$(uv run floating-prompts bootstrap | tail -1)`,
-   then create a project, add a version, set a tag, and render it (see the root
+6. Create a project, add a version, set a tag, and render it (see the root
    README quickstart or [API.md](API.md)).
 7. Run `uv run pytest` and read one test in each level.
 

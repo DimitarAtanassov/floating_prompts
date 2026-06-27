@@ -23,7 +23,7 @@ async def readyz(session: SessionDep, response: Response) -> dict[str, str]:
     """Return OK only if the database is reachable."""
     try:
         await session.execute(text("SELECT 1"))
-    except Exception:
+    except Exception:  # noqa: BLE001 - a probe must report, never raise
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "unavailable", "database": "down"}
     return {"status": "ok", "database": "up"}

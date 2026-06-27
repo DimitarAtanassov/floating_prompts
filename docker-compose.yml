@@ -28,13 +28,11 @@ services:
       FP_DB__PASSWORD: ${FP_DB__PASSWORD:-postgres}
       FP_DB__NAME: ${FP_DB__NAME:-floating_prompts}
       FP_ENVIRONMENT: ${FP_ENVIRONMENT:-local}
+      # Allow the web UI (Vite dev server) to call the API from the browser.
+      FP_SERVER__CORS_ORIGINS: ${FP_SERVER__CORS_ORIGINS:-["http://localhost:5173"]}
     ports:
       - "${FP_SERVER__PORT:-8000}:8000"
-    # Apply migrations, then serve.
-    command: >
-      sh -c "alembic upgrade head &&
-             uvicorn floating_prompts.api.app:create_app --factory
-             --host 0.0.0.0 --port 8000"
+    # Startup (migrate, then serve) is the Dockerfile CMD.
     profiles: ["full"]
 
 volumes:

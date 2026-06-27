@@ -33,7 +33,7 @@ Within the **service**, layers depend **inward** only:
 
 ```
 api/         HTTP layer (FastAPI routers, DI, error mapping)   ─┐ depends on
-services/    business logic, transactions, audit               │ services
+services/    business logic, transactions                     │ services
 repositories/ async data access (no business rules)            │ → repositories
 models/      SQLAlchemy ORM                                     │ → models
 db/  core/   infrastructure (sessions, config, logging, errors) ┘

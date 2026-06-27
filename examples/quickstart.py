@@ -2,9 +2,8 @@
 
 Prerequisites:
     1. docker compose up -d postgres
-    2. uv run alembic upgrade head
+    2. (cd apps/service && uv run alembic upgrade head)
     3. uv run floating-prompts serve            # in another terminal
-    4. export FP_API_KEY=$(uv run floating-prompts bootstrap | tail -1)
 
 Then:
     uv run python examples/quickstart.py
@@ -17,11 +16,10 @@ import os
 from floating_prompts_sdk import PromptsClient
 
 API_URL = os.environ.get("FP_API_URL", "http://localhost:8000")
-API_KEY = os.environ["FP_API_KEY"]
 
 
 def main() -> None:
-    with PromptsClient(API_URL, api_key=API_KEY) as client:
+    with PromptsClient(API_URL) as client:
         client.create_project("demo", "Demo Project")
 
         # v1, then v2 — versions are immutable and auto-incrementing.

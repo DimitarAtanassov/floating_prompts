@@ -9,12 +9,11 @@ It contains:
 
 - **`PromptsClient`** / **`AsyncPromptsClient`** — sync and async HTTP clients.
 - **`schemas`** — the Pydantic request/response models (the API contract).
-- **`Scope`** — the API-key permission enum.
 
 ```python
 from floating_prompts_sdk import PromptsClient
 
-with PromptsClient("http://localhost:8000", api_key="fp_...") as client:
+with PromptsClient("http://localhost:8000") as client:
     result = client.render("acme", "summarizer",
                            {"content": "Hello!"}, tag="production")
     print(result.user_prompt)

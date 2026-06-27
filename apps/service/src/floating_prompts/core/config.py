@@ -4,10 +4,9 @@ Settings are loaded from environment variables (and an optional ``.env`` file)
 using ``pydantic-settings``. Configuration is grouped into nested sections so
 that related knobs live together and map to a clear env-var namespace:
 
-    FP_DB__HOST=db.internal       -> settings.db.host
-    FP_SERVER__PORT=9000          -> settings.server.port
-    FP_AUTH__API_KEY_HEADER=X-Key -> settings.auth.api_key_header
-    FP_LOG__LEVEL=DEBUG           -> settings.log.level
+    FP_DB__HOST=db.internal   -> settings.db.host
+    FP_SERVER__PORT=9000      -> settings.server.port
+    FP_LOG__LEVEL=DEBUG       -> settings.log.level
 
 The single entry point is :func:`get_settings`, which returns a cached instance.
 """
@@ -23,7 +22,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = [
     "AppSettings",
-    "AuthSettings",
     "DatabaseSettings",
     "Environment",
     "LoggingSettings",
@@ -88,15 +86,6 @@ class ServerSettings(BaseModel):
     cors_origins: list[str] = Field(default_factory=list)
 
 
-class AuthSettings(BaseModel):
-    """API-key authentication configuration."""
-
-    api_key_header: str = "X-API-Key"
-    # Number of characters of a generated key used as the public, indexable
-    # prefix (the remainder is the secret that is hashed and never stored).
-    key_prefix_length: int = 8
-
-
 class LoggingSettings(BaseModel):
     """Structured logging configuration."""
 
@@ -120,7 +109,6 @@ class AppSettings(BaseSettings):
 
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
-    auth: AuthSettings = Field(default_factory=AuthSettings)
     log: LoggingSettings = Field(default_factory=LoggingSettings)
 
     @property

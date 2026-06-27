@@ -10,5 +10,7 @@
 .DS_Store
 **/tests
 examples
+apps/web
+docs
 docker-compose.yml
 .pre-commit-config.yaml

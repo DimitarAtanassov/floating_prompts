@@ -89,38 +89,8 @@ def app() -> object:
 
 
 @pytest_asyncio.fixture
-async def admin_key() -> str:
-    """Seed an admin API key and return its plaintext."""
-    from floating_prompts.db.session import session_scope
-    from floating_prompts.models.api_key import Scope
-    from floating_prompts.services.api_key_service import ApiKeyService
-
-    async with session_scope() as s:
-        issued = await ApiKeyService(s).issue(
-            name="test-admin",
-            scopes=[Scope.ADMIN.value],
-            project_slug=None,
-            expires_at=None,
-            actor="tests",
-        )
-        return issued.plaintext
-
-
-@pytest_asyncio.fixture
-async def client(app: object, admin_key: str) -> AsyncIterator[AsyncClient]:
-    """Authenticated (admin) HTTP client against the in-process app."""
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-        headers={"X-API-Key": admin_key},
-    ) as c:
-        yield c
-
-
-@pytest_asyncio.fixture
-async def anon_client(app: object) -> AsyncIterator[AsyncClient]:
-    """Unauthenticated HTTP client."""
+async def client(app: object) -> AsyncIterator[AsyncClient]:
+    """HTTP client against the in-process app."""
     transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c

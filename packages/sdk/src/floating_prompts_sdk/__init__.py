@@ -1,12 +1,12 @@
 """Floating Prompts SDK.
 
 A standalone, typed Python client for the Floating Prompts API, plus the Pydantic
-schemas and the ``Scope`` enum that define the API contract. Depends only on
-``pydantic`` and ``httpx`` — no server-side dependencies.
+schemas that define the API contract. Depends only on ``pydantic`` and ``httpx``,
+no server-side dependencies.
 
 Example:
     >>> from floating_prompts_sdk import PromptsClient
-    >>> with PromptsClient("http://localhost:8000", api_key="fp_...") as c:
+    >>> with PromptsClient("http://localhost:8000") as c:
     ...     c.render("acme", "summarizer", {"content": "..."}, tag="production")
 """
 
@@ -18,9 +18,6 @@ from floating_prompts_sdk.client import (
     PromptsClientError,
 )
 from floating_prompts_sdk.schemas import (
-    ApiKeyCreate,
-    ApiKeyCreated,
-    ApiKeyRead,
     Page,
     PageMeta,
     ProblemDetail,
@@ -36,12 +33,8 @@ from floating_prompts_sdk.schemas import (
     TagSet,
     VariableSpec,
 )
-from floating_prompts_sdk.scopes import Scope
 
 __all__ = [
-    "ApiKeyCreate",
-    "ApiKeyCreated",
-    "ApiKeyRead",
     "AsyncPromptsClient",
     "Page",
     "PageMeta",
@@ -56,7 +49,6 @@ __all__ = [
     "PromptsClientError",
     "RenderRequest",
     "RenderResult",
-    "Scope",
     "TagRead",
     "TagSet",
     "VariableSpec",
